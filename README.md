@@ -155,10 +155,9 @@ Cechy:
 
 Obis produktów : feature_store_project_summary.docx
 
-Przykład produktu w parquet ata.parquet
+Przykład produktu w parquet data.parquet
 
 ## Pipelines
 ![GRAPH](pipelineny.png)
-
 ## Produkty w Minio
 ![GRAPH](produkty_w_minio.png)
