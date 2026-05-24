@@ -20,22 +20,18 @@ Dane posidają następujące kolumny
 
 ## MinIO Data Lake
 
-Struktura danych
+Struktura MinIO została podzielona na:
 
-feature-store/
+raw/ – przechowuje surowe dane wejściowe NYC Taxi w formacie CSV,
+products/ – przechowuje gotowe produkty danych wygenerowane przez pipeline.
 
-├── raw/
-│    └── nyc_taxi_trip_duration.csv
-│
-└── products/
-     ├── eta_training/
-     │    └── export_date=YYYY-MM-DD/data.parquet
-     │
-     ├── demand_prediction/
-     │    └── export_date=YYYY-MM-DD/data.parquet
-     │
-     └── traffic_analysis/
-          └── export_date=YYYY-MM-DD/data.parquet
+Folder products/ zawiera trzy produkty:
+
+- eta_training
+- demand_prediction
+- traffic_analysis
+
+Każdy produkt jest eksportowany jako plik Apache Parquet data.parquet i wersjonowany po dacie eksportu export_date=YYYY-MM-DD
 
 ## Pipeline medallion_pipeline_dag.py
 
@@ -164,8 +160,5 @@ Przykład produktu w parquet ata.parquet
 ## Pipelines
 ![GRAPH](pipelineny.png)
 
-## Pipelines
-![GRAPH](pipelineny.png)
-
 ## Produkty w Minio
-![GRAPH](pipelineny.png)
+![GRAPH](produkty_w_minio.png)
