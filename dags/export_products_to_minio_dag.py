@@ -57,12 +57,20 @@ def export_products_to_minio():
         max_rows = int(dag_conf.get("max_rows", 1000))
         export_date = date.today().isoformat()
 
-        query = f"""
-            SELECT *
-            FROM {view_name}
-            ORDER BY pickup_datetime DESC
-            LIMIT {max_rows}
-        """
+        if max_rows == -1 :
+                print(f"Exporting all rows for product: {product_name}")
+                query = f"""
+                SELECT *
+                FROM {view_name}
+                ORDER BY pickup_datetime DESC
+            """
+        else:
+            query = f"""
+                SELECT *
+                FROM {view_name}
+                ORDER BY pickup_datetime DESC
+                LIMIT {max_rows}
+            """
 
         print(f"Exporting product: {product_name}")
         print(f"Source view: {view_name}")

@@ -121,9 +121,8 @@ Pipeline export_products_to_minio jest zaimplementowany jako osobny DAG w Airflo
 Pipeline odpowiada za eksport produktów danych z warstwy GOLD do plików Parquet w MinIO.
 
 Umożliwia konfigurację z GUI Airflow:
-{
-  "max_rows": 5000
-}
+"max_rows": 5000
+dla -1 - pobierz wszystkie rekordy.
 
 Pipeline eksportuje produkty:
 
