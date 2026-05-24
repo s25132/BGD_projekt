@@ -153,9 +153,15 @@ Cechy:
 - automatyczne wersjonowanie po dacie eksportu
 - produkty gotowe do ML i analytics
 
-Obis produktów : feature_store_project_summary.docx
 
-Przykład produktu w parquet data.parquet
+## Uruchomienie
+docker compose -f pipeline_docker.yml build
+
+docker compose -f pipeline_docker.yml up
+
+## Obis produktów : feature_store_project_summary.docx
+
+## Przykład produktu w parquet data.parquet
 
 ## Pipelines
 ![GRAPH](pipelineny.png)
