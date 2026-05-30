@@ -163,7 +163,7 @@ docker compose -f pipeline_docker.yml up
 ## Przykład produktu w parquet data.parquet
 
 ## Architektura medallion_pipeline_dag
-![GRAPH](BGD_projekt_DAG medallion_pipeline.png)
+![GRAPH](BGD_projekt_DAG_medallion_pipeline.png)
 ## Architektura export_products_to_minio_dag
 ![GRAPH](BGD_projekt_export_products_to_minio.png)
 ## Pipelines
