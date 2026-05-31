@@ -158,9 +158,11 @@ docker compose -f pipeline_docker.yml build
 
 docker compose -f pipeline_docker.yml up
 
-## Obis produktów : feature_store_project_summary.docx
+## Obis produktów
+feature_store_project_summary.docx
 
-## Przykład produktu w parquet data.parquet
+## Przykład produktu w parquet 
+data.parquet
 
 ## Architektura medallion_pipeline_dag
 ![GRAPH](BGD_projekt_DAG_medallion_pipeline.png)
