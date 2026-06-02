@@ -4,6 +4,7 @@
 Celem projektu jest zaprojektowanie i implementacja skalowalnego pipeline’u przetwarzania danych NYC Taxi, który przekształca surowe dane przejazdów taxi w wysokiej jakości model analityczny (warstwa GOLD) oraz produkty danych wykorzystywane do analizy ruchu miejskiego i uczenia maszynowego.
 
 ## Dane
+Żródło https://www.kaggle.com/competitions/nyc-taxi-trip-duration 
 Dane posidają następujące kolumny 
 
 - id – identyfikator kursu
