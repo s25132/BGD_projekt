@@ -2,18 +2,18 @@ import os
 import time
 
 import boto3
-from airflow.sdk import dag, task, get_current_context
+from airflow.sdk import dag, get_current_context, task
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 
+from src.gold import build_gold
 from src.raw import (
+    compute_file_hash,
+    is_file_already_loaded,
     load_raw,
     mark_file_as_loaded,
-    is_file_already_loaded,
-    compute_file_hash,
 )
 from src.silver import build_silver_spark
-from src.gold import build_gold
 
 
 DB_URL = os.getenv(
@@ -39,6 +39,7 @@ MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
 MINIO_BUCKET = os.getenv("MINIO_BUCKET", "feature-store")
 MINIO_DEFAULT_KEY = os.getenv("MINIO_DEFAULT_KEY", "raw/taxi1.csv")
+MINIO_RAW_PREFIX = os.getenv("MINIO_RAW_PREFIX", "raw/")
 
 
 def get_engine():
@@ -55,19 +56,36 @@ def get_engine():
     raise Exception("Could not connect to the database")
 
 
-def download_from_minio(bucket: str, key: str) -> str:
-    local_path = f"/tmp/{os.path.basename(key)}"
-
-    print(f"Downloading from MinIO: s3://{bucket}/{key}")
-    print(f"Local file path: {local_path}")
-
-    s3 = boto3.client(
+def get_s3_client():
+    return boto3.client(
         "s3",
         endpoint_url=MINIO_ENDPOINT,
         aws_access_key_id=MINIO_ACCESS_KEY,
         aws_secret_access_key=MINIO_SECRET_KEY,
     )
 
+
+def list_raw_csv_files(bucket: str, prefix: str = MINIO_RAW_PREFIX) -> list[str]:
+    s3 = get_s3_client()
+    paginator = s3.get_paginator("list_objects_v2")
+    keys = []
+
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        for obj in page.get("Contents", []):
+            key = obj["Key"]
+            if key.lower().endswith(".csv"):
+                keys.append(key)
+
+    return sorted(keys)
+
+
+def download_from_minio(bucket: str, key: str) -> str:
+    local_path = f"/tmp/{os.path.basename(key)}"
+
+    print(f"Downloading from MinIO: s3://{bucket}/{key}")
+    print(f"Local file path: {local_path}")
+
+    s3 = get_s3_client()
     s3.download_file(bucket, key, local_path)
 
     print("Download complete")
@@ -77,8 +95,10 @@ def download_from_minio(bucket: str, key: str) -> str:
 @dag(
     dag_id="medallion_pipeline",
     description="Medallion pipeline with Airflow, Spark, PostgreSQL and MinIO",
-    schedule=None,
+    schedule="*/5 * * * *",
     catchup=False,
+    is_paused_upon_creation=False,
+    max_active_runs=1,
     tags=["medallion", "airflow", "spark", "postgres", "minio"],
     default_args={"owner": "airflow", "retries": 1},
 )
@@ -102,34 +122,64 @@ def medallion_pipeline():
             "bucket",
             os.getenv("MINIO_BUCKET", "feature-store")
         )
-
-        minio_key = dag_conf.get(
-            "file",
-             os.getenv("MINIO_DEFAULT_KEY", "raw/taxi1.csv")
-        )
-
-        csv_file = download_from_minio(minio_bucket, minio_key)
+        minio_key = dag_conf.get("file")
+        raw_prefix = dag_conf.get("raw_prefix", MINIO_RAW_PREFIX)
 
         engine = get_engine()
 
-        file_name = os.path.basename(minio_key)
-        file_hash = compute_file_hash(csv_file)
+        if minio_key:
+            minio_keys = [minio_key]
+            print(f"Single-file mode enabled for s3://{minio_bucket}/{minio_key}")
+        else:
+            minio_keys = list_raw_csv_files(minio_bucket, raw_prefix)
+            print(f"Auto-discovery enabled for s3://{minio_bucket}/{raw_prefix}")
 
         print(f"Mode: {load_mode}")
-        print(f"MinIO source: s3://{minio_bucket}/{minio_key}")
-        print(f"Downloaded file: {csv_file}")
+        print(f"Files selected for RAW ingestion: {minio_keys}")
 
-        if load_mode == "incremental":
-            if is_file_already_loaded(engine, file_name, file_hash):
-                print(f"File {file_name} already loaded — skipping RAW")
-                return {"should_continue": False, "load_mode": load_mode}
+        if not minio_keys:
+            print("No CSV files found in MinIO RAW prefix")
+            return {
+                "should_continue": False,
+                "load_mode": load_mode,
+                "processed_files": [],
+                "skipped_files": [],
+            }
 
-        print(f"Starting RAW ingestion for file: {file_name}")
-        load_raw(engine, csv_file, CHUNK_SIZE)
-        mark_file_as_loaded(engine, file_name, file_hash)
-        print("RAW ingestion complete")
+        processed_files = []
+        skipped_files = []
 
-        return {"should_continue": True, "load_mode": load_mode}
+        for minio_key in minio_keys:
+            csv_file = download_from_minio(minio_bucket, minio_key)
+            file_name = os.path.basename(minio_key)
+            file_hash = compute_file_hash(csv_file)
+
+            print(f"MinIO source: s3://{minio_bucket}/{minio_key}")
+            print(f"Downloaded file: {csv_file}")
+
+            if load_mode == "incremental":
+                if is_file_already_loaded(engine, file_name, file_hash):
+                    print(f"File {file_name} already loaded - skipping RAW")
+                    skipped_files.append(minio_key)
+                    continue
+
+            print(f"Starting RAW ingestion for file: {file_name}")
+            load_raw(engine, csv_file, CHUNK_SIZE)
+            mark_file_as_loaded(engine, file_name, file_hash)
+            processed_files.append(minio_key)
+            print(f"RAW ingestion complete for file: {file_name}")
+
+        should_continue = bool(processed_files) or load_mode == "full"
+
+        print(f"RAW ingestion summary - processed: {processed_files}")
+        print(f"RAW ingestion summary - skipped: {skipped_files}")
+
+        return {
+            "should_continue": should_continue,
+            "load_mode": load_mode,
+            "processed_files": processed_files,
+            "skipped_files": skipped_files,
+        }
 
     @task
     def silver_build(raw_result: dict):
