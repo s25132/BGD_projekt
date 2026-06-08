@@ -44,17 +44,36 @@ Pipeline odpowiada za pełne przetwarzanie danych NYC Taxi od surowego pliku CSV
 
 Pipeline ma trzy taski.
 
+Pipeline jest uruchamiany cyklicznie przez Airflow. Harmonogram DAG 1 jest ustawiony na co 5 minut:
+
+"*/5 * * * *"
+
+DAG ma ustawione ograniczenie max_active_runs=1, dzięki czemu tylko jeden run może być aktywny w danym momencie.
+Zapobiega to nakładaniu sie uruchomień i ponownemu ładowaniu tych samych plików.
+
 RAW Ingestion – raw_ingestion()
 
 Cel: przechowywanie surowych, historycznych danych (append-only)
 
-- Pobiera plik CSV z MinIO
+Pobiera pliki CSV z MinIO
 
-Domyślnie używa:
-s3://feature-store/raw/taxi1.csv
+DAG 1 wspiera dwa tryby wyboru plików wejściowych.
 
-Umożliwia wybór pliku z GUI Airflow:
+Tryb pojedynczego pliku:
+
+Jeżeli użytkownik poda parametr file, DAG przetwarza dokładnie wskazany plik:
+
 "file": "raw/taxi1.csv"
+
+Tryb auto-discovery:
+
+Jeżeli parametr file nie zostanie podany, DAG automatycznie listuje pliki CSV z prefixu raw/ w MinIO:
+
+s3://feature-store/raw/
+
+Następnie sprawdza raw.ingestion_log i przetwarza tylko pliki, które nie zostały wcześniej załadowane.
+
+Źródłem danych dla DAG jest MinIO. Lokalny katalog data/ sluzy tylko do początkowego seedowania MinIO podczas startu środowiska i nie jest obserwowany przez DAG po uruchomieniu kontenerów.
 
 Parametr load_mode określa sposób przetwarzania danych w pipeline i pozwala przełączać się pomiędzy trybem przyrostowym (incremental) oraz pełnym (full).
 
