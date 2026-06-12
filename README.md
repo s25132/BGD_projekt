@@ -1,4 +1,4 @@
-# BGD_projekt
+# AI Data Engineering - Feature Store Zespół 15 Jakub Hass, Piotr Pawlina, Michał Stefański
 
 ## Cel zadania 
 Celem projektu jest zaprojektowanie i implementacja skalowalnego pipeline’u przetwarzania danych NYC Taxi, który przekształca surowe dane przejazdów taxi w wysokiej jakości model analityczny (warstwa GOLD) oraz produkty danych wykorzystywane do analizy ruchu miejskiego i uczenia maszynowego.
@@ -192,3 +192,7 @@ data.parquet
 ![GRAPH](pipelineny.png)
 ## Produkty w Minio
 ![GRAPH](produkty_w_minio.png)
+
+
+## Podział prac
+https://pejot-my.sharepoint.com/:w:/g/personal/s25132_pjwstk_edu_pl/IQBcuJeJ5elsTZ47z66foAAmAQ33G1pUuBrr_BSTLAbHyFs?e=ICjzy3 
